@@ -66,7 +66,7 @@ module SingleCycleCPU(halt, clk, rst);
    assign funct7 = InstWord[31:25];  // R-Type
 
    assign MemWrEn = 1'b0; // Change this to allow stores
-   assign RWrEn = 1'b1;  // At the moment every instruction will write to the register file
+   assign RWrEn = (opcode == `OPCODE_COMPUTE) || (opcode == `OPCODE_ICOMPUTE);
 
    // Immediate Decode
    assign imm_I = {{20{InstWord[31]}},InstWord[31:20]}; // sign-extend to 32 bits
@@ -85,7 +85,8 @@ module SingleCycleCPU(halt, clk, rst);
    assign opB_val = (opcode == `OPCODE_ICOMPUTE) ? imm_I : Rdata2;
 
    // Hardwired to support R-Type instructions -- please add muxes and other control signals
-   ExecutionUnit EU(.out(RWrdata), .opA(Rdata1), .opB(opB_val), .func(funct3), .auxFunc(funct7));
+   ExecutionUnit EU(.out(RWrdata), .opA(Rdata1), .opB(opB_val), .func(funct3), .auxFunc((opcode == `OPCODE_COMPUTE) ? funct7 : 7'b0));
+
 
    // Fetch Address Datapath
    assign PC_Plus_4 = PC + 4;
