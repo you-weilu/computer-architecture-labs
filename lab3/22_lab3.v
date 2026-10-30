@@ -40,6 +40,8 @@ module SingleCycleCPU(halt, clk, rst);
 
    wire [`WORD_WIDTH-1:0] imm_I, imm_S, imm_B, imm_U, imm_J;
    wire [`WORD_WIDTH-1:0] opB_val;
+
+   wire branch_taken;
    
    // Only support R-TYPE ADD and SUB
    assign halt = invalid_op;
@@ -69,11 +71,10 @@ module SingleCycleCPU(halt, clk, rst);
    // Immediate Decode
    assign imm_I = {{20{InstWord[31]}},InstWord[31:20]}; // sign-extend to 32 bits
    assign imm_S = {{20{InstWord[31]}}, InstWord[31:25], InstWord[11:7]};
+   assign imm_B = {{20{InstWord[31]}}, InstWord[7], InstWord[30:25], InstWord[11:8], 1'b0};
 
-   // Memory Datapath
-   assign DataAddr = Rdata1 + ((opcode == `OPCODE_STORE) ? imm_S : imm_I);
-   assign StoreData = Rdata2;
-   
+   // Branch logic
+   assign branch_taken = () ?
    
    // opB select
    assign opB_val = (opcode == `OPCODE_ICOMPUTE) ? imm_I : Rdata2;
@@ -83,7 +84,9 @@ module SingleCycleCPU(halt, clk, rst);
 
    // Fetch Address Datapath
    assign PC_Plus_4 = PC + 4;
-   assign NPC = PC_Plus_4;
+   assign NPC = (opcode == `OPCODE_BRANCH && branch_taken) ? (PC + imm_B) : PC_Plus_4;
+
+
    
 endmodule // SingleCycleCPU
 
