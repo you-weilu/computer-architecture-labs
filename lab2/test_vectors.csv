@@ -1,0 +1,81 @@
+# RV32I ALU Verification Suite
+# OPCODE, RS1_HEX,    RS2_HEX,    COMMENT
+ADD,      0x00000005, 0x00000003, 101 + 011 = 1000
+ADD,      0x7FFFFFFF, 0x00000001, Positive overflow boundary check
+ADD,      0x80000000, 0xFFFFFFFF, Negative underflow boundary check
+ADD,      0x80000000, 0x80000000, Carry out discarded
+ADD,      0xFFFFFFFF, 0x00000001, Carry chain check
+ADD,      0x00000000, 0x00000000, zeros
+ADD,      0x55555555, 0xAAAAAAAA, all ones
+SUB,      0x00000008, 0x00000003, 1000 - 011 = 101
+SUB,      0x80000000, 0x00000001, Negative underflow boundary check
+SUB,      0x7FFFFFFF, 0xFFFFFFFF, Positive overflow boundary check
+SUB,      0x00000000, 0x00000001, Borrows from beyond top bit then discards
+SUB,      0xFFFFFFFF, 0xFFFFFFFF, all zeroes
+SLT,      0xFFFFFFFF, 0x00000001, Signed comparison across zero boundary (-1 < 1)
+SLT,      0x00000001, 0xFFFFFFFF, 1 < -1 (false)
+SLT,      0x80000000, 0x00000001, A - B overflows (most negative - 1)
+SLT,      0x7FFFFFFF, 0xFFFFFFFF, A - B overflow (most positive - (-1))
+SLT,      0x55555555, 0x55555555, Equal
+SLT,      0x00000003, 0x00000004, 3 < 4 (true)
+SLTU,     0xFFFFFFFF, 0x00000001, Unsigned comparison across zero boundary (4294967295 > 1)
+SLTU,     0x00000001, 0xFFFFFFFF, 1 < max unsigned
+SLTU,     0x80000000, 0x00000001, MSB set vs small value
+SLTU,     0x7FFFFFFF, 0xFFFFFFFF, Comparison across MSB boundary
+SLTU,     0xFFFFFFFE, 0xFFFFFFFF, Differs in LSB
+SLTU,     0x55555555, 0x55555555, Equal
+SLTU,     0x00000003, 0x00000004, 3 < 4 (true)
+SRA,      0xDEADBEEF, 0x00000001, Shift 1 sign fill (0xEF56DF77)
+SRA,      0xDEADBEEF, 0x00000002, Shift 2 sign fill (0xF7AB6FBB)
+SRA,      0xDEADBEEF, 0x00000004, Shift 4 sign fill (0xFDEADBEE)
+SRA,      0xDEADBEEF, 0x00000008, Shift 8 sign fill (0xFFDEADBE)
+SRA,      0xDEADBEEF, 0x00000010, Shift 16 sign fill (0xFFFFDEAD)
+SRA,      0x7FFFFFFF, 0x00000001, Positive input fills with 0 (0x3FFFFFFF)
+SRA,      0x80000000, 0x0000001F, Shift by 31 fills all sign bits (all ones)
+SRA,      0xFFFFFFFF, 0x00000001, All ones stays all ones
+SRA,      0x00000001, 0x00000000, Shift by 0 (no change)
+SRA,      0x80000000, 0x00000020, Lower 5 bits of 32 = 0 (no change)
+SLL,      0xDEADBEEF, 0x00000001, Shift 1 (0xBD5B7DDE)
+SLL,      0xDEADBEEF, 0x00000002, Shift 2 (0x7AB6FBBC)
+SLL,      0xDEADBEEF, 0x00000004, Shift 4 (0xEADBEEF0)
+SLL,      0xDEADBEEF, 0x00000008, Shift 8 (0xADBEEF00)
+SLL,      0xDEADBEEF, 0x00000010, Shift 16 (0xBEEF0000)
+SLL,      0x00000001, 0x00000020, Shift amount uses only lower 5 bits (shamt=32 wraps to 0)
+SLL,      0x00000001, 0x0000001F, Shift 1 left by 31 (0x80000000)
+SLL,      0xFFFFFFFF, 0x00000001, Shift all ones left by 1 drops MSB
+SLL,      0x00000001, 0x00000000, Shift by 0
+SLL,      0x55555555, 0x00000001, Alternating pattern shifted left by 1
+SRL,      0xDEADBEEF, 0x00000001, Shift 1 zero fill (0x6F56DF77)
+SRL,      0xDEADBEEF, 0x00000002, Shift 2 zero fill (0x37AB6FBB)
+SRL,      0xDEADBEEF, 0x00000004, Shift 4 zero fill (0x0DEADBEE)
+SRL,      0xDEADBEEF, 0x00000008, Shift 8 zero fill (0x00DEADBE)
+SRL,      0xDEADBEEF, 0x00000010, Shift 16 zero fill (0x0000DEAD)
+SRL,      0x80000000, 0x0000001F, Logical shift 0x80000000 right 31 gives 1
+SRL,      0xFFFFFFFF, 0x00000001, All ones logical right shift inserts 0 at MSB
+SRL,      0x00000001, 0x00000001, Shift 1 right by 1
+SRL,      0x00000001, 0x00000000, Shift by 0
+SRL,      0x00000001, 0x00000020, Lower 5 bits of 32 --> 0
+XOR,      0xFFFFFFFF, 0xFFFFFFFF, All ones XOR all ones --> 0
+XOR,      0x00000000, 0xFFFFFFFF, Zero XOR all ones --> all ones
+XOR,      0xFFFFFFFF, 0x00000000, All ones XOR zero --> all ones
+XOR,      0x55555555, 0xAAAAAAAA, XOR Alternating bits --> all ones
+XOR,      0xDEADBEEF, 0x00000000, XOR with 0
+XOR,      0xDEADBEEF, 0xDEADBEEF, XOR with self
+XOR,      0x00000000, 0x00000000, Zero XOR zero = 0
+XOR,      0xDEADBEEF, 0x0F0F0F0F, Random Pattern (0xD1A2B1E0)
+OR,       0x00000000, 0x00000000, Zero OR zero = 0
+OR,       0xFFFFFFFF, 0x00000000, OR with 0
+OR,       0x55555555, 0xAAAAAAAA, Alternating bits --> All ones
+OR,       0x00000000, 0xFFFFFFFF, Zero OR all ones --> all ones
+OR,       0xFFFFFFFF, 0xFFFFFFFF, All ones OR all ones --> all ones
+OR,       0x55555555, 0x55555555, OR with itself --> itself
+OR,       0x80000000, 0x7FFFFFFF, MSB and lower bits combined = all ones
+OR,       0xDEADBEEF, 0x0F0F0F0F, Random Pattern (0xDFAFBFEF)
+AND,      0xFFFFFFFF, 0xFFFFFFFF, All ones AND all ones = all ones
+AND,      0x00000000, 0xFFFFFFFF, Zero AND all ones --> zeroes
+AND,      0xFFFFFFFF, 0x00000000, All ones AND zero --> zeroes
+AND,      0x00000000, 0x00000000, Zero AND zero --> zeroes
+AND,      0x55555555, 0xAAAAAAAA, Alternating bits --> zeroes
+AND,      0xDEADBEEF, 0xFFFFFFFF, AND with all ones --> itself
+AND,      0x55555555, 0x55555555, AND itself --> itself
+AND,      0xDEADBEEF, 0x0F0F0F0F, Random pattern (0x0E0D0E0F)
