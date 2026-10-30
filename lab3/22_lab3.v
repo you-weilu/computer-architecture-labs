@@ -74,7 +74,12 @@ module SingleCycleCPU(halt, clk, rst);
    assign imm_B = {{20{InstWord[31]}}, InstWord[7], InstWord[30:25], InstWord[11:8], 1'b0};
 
    // Branch logic
-   assign branch_taken = () ?
+   assign branch_taken = (funct3 == 3'h0) ? (Rdata1 == Rdata2) :
+                         (funct3 == 3'h1) ? (Rdata1 != Rdata2) :
+                         (funct3 == 3'h4) ? ($signed(Rdata1) < $signed(Rdata2)) :
+                         (funct3 == 3'h5) ? ($signed(Rdata1) >= $signed(Rdata2)) :
+                         (funct3 == 3'h6) ? (Rdata1 < Rdata2) :
+                         (funct3 == 3'h7) ? (Rdata >= Rdata2) : 1'b0;
    
    // opB select
    assign opB_val = (opcode == `OPCODE_ICOMPUTE) ? imm_I : Rdata2;
@@ -85,7 +90,6 @@ module SingleCycleCPU(halt, clk, rst);
    // Fetch Address Datapath
    assign PC_Plus_4 = PC + 4;
    assign NPC = (opcode == `OPCODE_BRANCH && branch_taken) ? (PC + imm_B) : PC_Plus_4;
-
 
    
 endmodule // SingleCycleCPU
