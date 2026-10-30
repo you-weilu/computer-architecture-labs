@@ -45,7 +45,7 @@ module SingleCycleCPU(halt, clk, rst);
    
    // Only support R-TYPE ADD and SUB
    assign halt = invalid_op;
-   assign invalid_op = !((opcode == `OPCODE_COMPUTE) || (opcode == `OPCODE_ICOMPUTE));
+   assign invalid_op = !((opcode == `OPCODE_COMPUTE) || (opcode == `OPCODE_ICOMPUTE) || (opcode == `OPCODE_BRANCH));
      
    // System State 
    Mem   MEM(.InstAddr(PC), .InstOut(InstWord), 
@@ -79,7 +79,7 @@ module SingleCycleCPU(halt, clk, rst);
                          (funct3 == 3'h4) ? ($signed(Rdata1) < $signed(Rdata2)) :
                          (funct3 == 3'h5) ? ($signed(Rdata1) >= $signed(Rdata2)) :
                          (funct3 == 3'h6) ? (Rdata1 < Rdata2) :
-                         (funct3 == 3'h7) ? (Rdata >= Rdata2) : 1'b0;
+                         (funct3 == 3'h7) ? (Rdata1 >= Rdata2) : 1'b0;
    
    // opB select
    assign opB_val = (opcode == `OPCODE_ICOMPUTE) ? imm_I : Rdata2;
