@@ -18,6 +18,8 @@
 `define SIZE_HWORD 2'b01
 `define SIZE_WORD  2'b10
 `define OPCODE_ICOMPUTE 7'b0010011
+`define OPCODE_LUI   7'b0110111
+`define OPCODE_AUIPC 7'b0010111
 
 module SingleCycleCPU(halt, clk, rst);
    output halt;
@@ -49,13 +51,14 @@ module SingleCycleCPU(halt, clk, rst);
 
    wire branch_taken;
 
-   wire is_r, is_i, is_br, is_ld, is_st, is_jal, is_jalr;
+   wire is_r, is_i, is_br, is_ld, is_st, is_jal, is_jalr, is_lui, is_auipc; 
+   wire r_ok, i_ok, br_ok, ld_ok, st_ok, jalr_ok;
    wire mem_misaligned, fetch_misaligned;
    
    assign halt = invalid_op || mem_misaligned || fetch_misaligned;
    assign invalid_op = !( (is_r  && r_ok)  || (is_i  && i_ok)  || (is_br && br_ok) ||
                           (is_ld && ld_ok) || (is_st && st_ok) || is_jal ||
-                          (is_jalr && jalr_ok) );
+                          (is_jalr && jalr_ok) || is_lui || is_auipc);
    // Opcodes
    assign is_r     = (opcode == `OPCODE_COMPUTE);
    assign is_i     = (opcode == `OPCODE_ICOMPUTE);
@@ -64,6 +67,8 @@ module SingleCycleCPU(halt, clk, rst);
    assign is_st    = (opcode == `OPCODE_STORE);
    assign is_jal   = (opcode == `OPCODE_JAL);
    assign is_jalr  = (opcode == `OPCODE_JALR);
+   assign is_lui   = (opcode == `OPCODE_LUI);
+   assign is_auipc = (opcode == `OPCODE_AUIPC);
 
    // System State 
    Mem   MEM(.InstAddr(PC), .InstOut(InstWord), 
@@ -83,20 +88,19 @@ module SingleCycleCPU(halt, clk, rst);
    assign funct3 = InstWord[14:12];  // R-Type, I-Type, S-Type
    assign funct7 = InstWord[31:25];  // R-Type
 
-   assign MemWrEn = (opcode == `OPCODE_STORE) && !halt;
-   assign RWrEn = ((opcode == `OPCODE_COMPUTE) || (opcode == `OPCODE_ICOMPUTE) ||
-                (opcode == `OPCODE_LOAD)    || (opcode == `OPCODE_JAL)      ||
-                (opcode == `OPCODE_JALR)) && !halt;
+   assign MemWrEn = is_st && !halt;
+   assign RWrEn = (is_r || is_i || is_ld || is_jal || is_jalr || is_lui || is_auipc) && !halt;
 
    // Immediate Decode
    assign imm_I = {{20{InstWord[31]}},InstWord[31:20]}; // sign-extend to 32 bits
    assign imm_S = {{20{InstWord[31]}}, InstWord[31:25], InstWord[11:7]};
    assign imm_B = {{20{InstWord[31]}}, InstWord[7], InstWord[30:25], InstWord[11:8], 1'b0};
    assign imm_J = {{12{InstWord[31]}}, InstWord[19:12], InstWord[20], InstWord[30:21], 1'b0};
+   assign imm_U = {InstWord[31:12], 12'b0};
 
 
    // Memory access
-   assign DataAddr = (opcode == `OPCODE_STORE) ? Rdata1 + imm_S : Rdata1 + imm_I;
+   assign DataAddr = is_st ? Rdata1 + imm_S : Rdata1 + imm_I;
    assign StoreData = Rdata2;
 
    assign load_val = (funct3 == 3'h0) ? {{24{DataWord[7]}}, DataWord[7:0]} :
@@ -105,12 +109,14 @@ module SingleCycleCPU(halt, clk, rst);
                      (funct3 == 3'h4) ? {24'b0, DataWord[7:0]} :
                      (funct3 == 3'h5) ? {16'b0, DataWord[15:0]} : 32'b0;
 
-   assign RWrdata = (opcode == `OPCODE_LOAD) ? load_val : 
-                     (opcode == `OPCODE_JAL || opcode == `OPCODE_JALR) ? PC_Plus_4 :
-                     EU_out;
+   assign RWrdata = is_ld               ? load_val  : 
+                    (is_jal || is_jalr) ? PC_Plus_4 :
+                    is_lui ? imm_U :
+                    is_auipc ? (PC + imm_U) :
+                    EU_out;
 
    // Halt checks
-   assign mem_misaligned = ((opcode == `OPCODE_LOAD) || (opcode == `OPCODE_STORE)) &&
+   assign mem_misaligned = (is_ld || is_st) &&
                            ((MemSize == `SIZE_WORD) && DataAddr[1:0] != 2'b00 ||
                             (MemSize == `SIZE_HWORD && DataAddr[0] != 1'b0));
 
@@ -140,11 +146,11 @@ module SingleCycleCPU(halt, clk, rst);
    assign MemSize = funct3[1:0];
    
    // opB select
-   assign opB_val = (opcode == `OPCODE_ICOMPUTE) ? imm_I : Rdata2;
+   assign opB_val = is_i ? imm_I : Rdata2;
 
    // Hardwired to support R-Type instructions -- please add muxes and other control signals
-   ExecutionUnit EU(.out(EU_out), .opA(Rdata1), .opB(opB_val), .func(funct3), .auxFunc((opcode == `OPCODE_COMPUTE) ||
-         (opcode == `OPCODE_ICOMPUTE && funct3 == 3'b101) ? funct7 : 7'b0));
+   ExecutionUnit EU(.out(EU_out), .opA(Rdata1), .opB(opB_val), .func(funct3), .auxFunc(is_r ||
+         (is_i && funct3 == 3'b101) ? funct7 : 7'b0));
 
 
    // Fetch Address Datapath
@@ -178,13 +184,13 @@ module ExecutionUnit(
   wire [31:0] res_or;
   wire [31:0] res_and;
 
+  assign res_srl = opA >> opB[4:0];
   assign res_add  = opA + opB;
   assign res_sub  = opA - opB;
   assign res_sll  = opA << opB[4:0];
   assign res_slt  = ($signed(opA) < $signed(opB));
   assign res_sltu = opA < opB;
   assign res_xor = opA ^ opB;
-  assign res_srl = opA >> opB[4:0];
   assign res_sra = $signed(opA) >>> opB[4:0];
   assign res_or = opA | opB;
   assign res_and = opA & opB;

@@ -1,6 +1,6 @@
 # CompEng 361 - Lab 3 Student Makefile
 
-CPU ?= template_lab3.v
+CPU ?= 22_lab3.v
 SIM_BIN = single
 
 .PHONY: all test tier-a tier-b sim clean
