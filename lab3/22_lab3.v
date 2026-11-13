@@ -155,9 +155,9 @@ module SingleCycleCPU(halt, clk, rst);
 
    // Fetch Address Datapath
    assign PC_Plus_4 = PC + 4;
-   assign NPC = (opcode == `OPCODE_BRANCH && branch_taken) ? (PC + imm_B) :
-                (opcode == `OPCODE_JAL) ? (PC + imm_J) :
-                (opcode == `OPCODE_JALR && funct3 == 3'h0) ? ((Rdata1 + imm_I) & ~32'b1) : 
+   assign NPC = (is_br && branch_taken) ? (PC + imm_B) :
+                is_jal ? (PC + imm_J) :
+                (is_jalr && funct3 == 3'h0) ? ((Rdata1 + imm_I) & ~32'b1) : 
                  PC_Plus_4;
 
    
