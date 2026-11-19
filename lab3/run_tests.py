@@ -150,7 +150,7 @@ def run_suite(
             mem_out = os.path.join(tmpdir, f"{tname}_mem.hex")
 
             sim_cmd = [
-                sim_bin,
+                "vvp", sim_bin,
                 f"+MEM_IN={hex_path}",
                 f"+REGS_IN={regs_in_path}",
                 f"+TRACE_OUT={trace_out}",
@@ -402,7 +402,7 @@ def main() -> None:
             try:
                 subprocess.run(
                     [
-                        sim_bin,
+                        "vvp", sim_bin,
                         f"+MEM_IN={hex_path}",
                         f"+REGS_IN={regs_in_path}",
                         "+TRACE_OUT=trace.txt",
